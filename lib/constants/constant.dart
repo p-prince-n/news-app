@@ -62,6 +62,13 @@ String formatDate(String dateString) {
   return DateFormat("dd MMM yyyy, h:mm a").format(dateTime);
 }
 
+String capitalizeFirstChar({required String category}) {
+  String capitalize = "";
+  capitalize += category.substring(0, 1).toUpperCase();
+  capitalize += category.substring(1);
+  return capitalize;
+}
+
 Future<List<ArticleModel>> getTopHeadlines() async {
   try {
     final String apiKey = dotenv.env['NEWS_API_KEY'] ?? "";
@@ -80,6 +87,101 @@ Future<List<ArticleModel>> getTopHeadlines() async {
 
       final newsResponse = NewsResponseModel.fromJson(jsonData);
 
+      final filteredArticles =
+          newsResponse.articles.where((article) {
+            return article.author != null &&
+                article.author!.trim().isNotEmpty &&
+                article.title != null &&
+                article.title!.trim().isNotEmpty &&
+                article.description != null &&
+                article.description!.trim().isNotEmpty &&
+                article.urlToImage != null &&
+                article.urlToImage!.trim().isNotEmpty &&
+                article.publishedAt != null &&
+                article.publishedAt!.trim().isNotEmpty;
+          }).toList();
+
+      return filteredArticles;
+    } else {
+      throw Exception("Failed to load news: ${response.statusCode}");
+    }
+  } catch (e) {
+    throw Exception("Error fetching news: $e");
+  }
+}
+
+Future<List<ArticleModel>> getTopHeadlinesCategory({
+  required String category,
+}) async {
+  try {
+    final String apiKey = dotenv.env['NEWS_API_KEY'] ?? "";
+
+    if (apiKey.isEmpty) {
+      throw Exception("NEWS_API_KEY missing in .env file");
+    }
+
+    final String apiUrl =
+        "https://newsapi.org/v2/top-headlines?country=us&category=$category&apiKey=$apiKey";
+
+    final response = await http.get(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      final newsResponse = NewsResponseModel.fromJson(jsonData);
+
+      // FILTERING ARTICLES
+      final filteredArticles =
+          newsResponse.articles.where((article) {
+            return article.author != null &&
+                article.author!.trim().isNotEmpty &&
+                article.title != null &&
+                article.title!.trim().isNotEmpty &&
+                article.description != null &&
+                article.description!.trim().isNotEmpty &&
+                article.urlToImage != null &&
+                article.urlToImage!.trim().isNotEmpty &&
+                article.publishedAt != null &&
+                article.publishedAt!.trim().isNotEmpty;
+          }).toList();
+
+      return filteredArticles;
+    } else {
+      throw Exception("Failed to load news: ${response.statusCode}");
+    }
+  } catch (e) {
+    throw Exception("Error fetching news: $e");
+  }
+}
+
+Future<List<ArticleModel>> getUSNews({
+  String query = "usa", // Default for US news
+  int page = 1,
+  int pageSize = 20,
+}) async {
+  try {
+    final String apiKey = dotenv.env['NEWS_API_KEY'] ?? "";
+
+    if (apiKey.isEmpty) {
+      throw Exception("NEWS_API_KEY missing in .env file");
+    }
+
+    final String apiUrl =
+        "https://newsapi.org/v2/everything?"
+        "q=$query&"
+        "page=$page&"
+        "pageSize=$pageSize&"
+        "sortBy=publishedAt&"
+        "apiKey=$apiKey";
+
+    final response = await http.get(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      final newsResponse = NewsResponseModel.fromJson(jsonData);
+
+      // Filter out incomplete articles
       final filteredArticles =
           newsResponse.articles.where((article) {
             return article.author != null &&

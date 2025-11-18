@@ -81,14 +81,18 @@ class BlogTile extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w300),
                       ),
                       Text(
-                        author,
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        author.length > 20
+                            ? "${author.substring(0, 20)}..."
+                            : author,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
                 SizedBox(height: 5),
                 Text(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   title,
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
                 ),

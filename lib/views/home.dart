@@ -4,6 +4,7 @@ import 'package:news_app/components/category_tile.dart';
 import 'package:news_app/constants/constant.dart';
 import 'package:news_app/models/artical_model.dart';
 import 'package:news_app/models/category_model.dart';
+import 'package:news_app/views/category_news.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -15,15 +16,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<ArticleModel> news_data = [];
+  List<ArticleModel> newsData = [];
   List<CategoryModel>? categoryList = [];
   bool _loading = true;
 
-  void getTopHeadLineData() async {
-    news_data = await getTopHeadlines();
-    setState(() {
-      _loading = false;
-    });
+  int page = 1;
+  final int pageSize = 10;
+
+  Future<void> getTopHeadLineData() async {
+    setState(() => _loading = true);
+
+    newsData = await getUSNews(page: page, pageSize: pageSize);
+
+    setState(() => _loading = false);
   }
 
   @override
@@ -39,12 +44,38 @@ class _HomePageState extends State<HomePage> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
         child: AppBar(
-          title: Text('NEWS APP'),
+          title: Text(
+            'NEWS APP',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           centerTitle: true,
           elevation: 1,
           actions: [
+            Tooltip(
+              message: "Top Headlines",
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder:
+                          (context) => CategoryNews(
+                            category: "Top Headlines",
+                            toggleTheme: widget.toggleTheme,
+                            isDark: widget.isDark,
+                            fetchCategoryData: false,
+                          ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(50),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(Icons.newspaper, size: 28),
+                ),
+              ),
+            ),
             IconButton(
-              onPressed: () => widget.toggleTheme(),
+              onPressed: widget.toggleTheme,
               icon: Icon(
                 widget.isDark ? Icons.light_mode : Icons.dark_mode,
                 color: widget.isDark ? Colors.white : Colors.black,
@@ -55,16 +86,31 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          Container(
+          SizedBox(
             height: 80,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              shrinkWrap: true,
               itemCount: categoryList!.length,
               itemBuilder: (context, idx) {
-                return CategoryTile(
-                  tileName: categoryList![idx].categoryName,
-                  imageurl: categoryList![idx].imgUrl,
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (context) => CategoryNews(
+                              category: categoryList![idx].categoryName,
+                              toggleTheme: widget.toggleTheme,
+                              isDark: widget.isDark,
+                            ),
+                      ),
+                    );
+                  },
+                  child: CategoryTile(
+                    tileName: capitalizeFirstChar(
+                      category: categoryList![idx].categoryName,
+                    ),
+                    imageurl: categoryList![idx].imgUrl,
+                  ),
                 );
               },
             ),
@@ -76,33 +122,80 @@ class _HomePageState extends State<HomePage> {
             width: double.infinity,
             color: widget.isDark ? Colors.white : Colors.black,
           ),
+
           SizedBox(height: 10),
-          Text(
-            'Top Headlines',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 25),
-          ),
-          SizedBox(height: 5),
+
           Expanded(
             child:
                 _loading
                     ? Center(child: CircularProgressIndicator.adaptive())
                     : ListView.builder(
-                      scrollDirection: Axis.vertical,
-                      shrinkWrap: false,
-                      itemCount: news_data.length,
+                      itemCount: newsData.length,
                       itemBuilder: (context, idx) {
                         return BlogTile(
                           isDark: widget.isDark,
                           toggleTheme: widget.toggleTheme,
-                          author: news_data[idx].author!,
-                          title: news_data[idx].title,
-                          description: news_data[idx].description!,
-                          urlToImage: news_data[idx].urlToImage!,
-                          publishedAt: news_data[idx].publishedAt!,
-                          articalUrl: news_data[idx].url,
+                          author: newsData[idx].author ?? "",
+                          title: newsData[idx].title,
+                          description: newsData[idx].description ?? "",
+                          urlToImage: newsData[idx].urlToImage ?? "",
+                          publishedAt: newsData[idx].publishedAt ?? "",
+                          articalUrl: newsData[idx].url,
                         );
                       },
                     ),
+          ),
+
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // ⬅ Previous Button
+                ElevatedButton(
+                  onPressed:
+                      page > 1
+                          ? () {
+                            setState(() {
+                              page--;
+                            });
+                            getTopHeadLineData();
+                          }
+                          : null,
+
+                  style: ElevatedButton.styleFrom(
+                    elevation: 5,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Previous"),
+                ),
+
+                SizedBox(width: 20),
+
+                Text(
+                  "Page: $page",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+
+                SizedBox(width: 20),
+
+                // ➡ Next Button
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      page++;
+                    });
+                    getTopHeadLineData();
+                  },
+
+                  style: ElevatedButton.styleFrom(
+                    elevation: 5,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Next"),
+                ),
+              ],
+            ),
           ),
         ],
       ),
