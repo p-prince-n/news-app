@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+
 import 'package:news_app/components/blog_tile.dart';
 import 'package:news_app/components/category_tile.dart';
 import 'package:news_app/constants/constant.dart';
@@ -9,6 +12,7 @@ import 'package:news_app/views/category_news.dart';
 class HomePage extends StatefulWidget {
   final VoidCallback toggleTheme;
   final bool isDark;
+
   const HomePage({super.key, required this.toggleTheme, required this.isDark});
 
   @override
@@ -23,6 +27,9 @@ class _HomePageState extends State<HomePage> {
   int page = 1;
   final int pageSize = 10;
 
+  bool hasInternet = true;
+  StreamSubscription? connectionSub;
+
   Future<void> getTopHeadLineData() async {
     setState(() => _loading = true);
 
@@ -34,8 +41,68 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
     categoryList = getCategoryList();
+
+    // Listen for connectivity using latest API (returns List)
+    connectionSub = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> result,
+    ) {
+      bool connected =
+          result.contains(ConnectivityResult.mobile) ||
+          result.contains(ConnectivityResult.wifi) ||
+          result.contains(ConnectivityResult.ethernet);
+
+      setState(() => hasInternet = connected);
+
+      if (connected) {
+        getTopHeadLineData();
+      }
+    });
+
     getTopHeadLineData();
+  }
+
+  @override
+  void dispose() {
+    connectionSub?.cancel();
+    super.dispose();
+  }
+
+  Widget noInternetWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.wifi_off, size: 80, color: Colors.grey),
+          const SizedBox(height: 15),
+          Text(
+            "No Internet Connection",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "Please check your network and try again.",
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () {
+              getTopHeadLineData(); // retry
+            },
+            icon: Icon(Icons.refresh),
+            label: Text("Retry"),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -84,8 +151,10 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+
       body: Column(
         children: [
+          // Categories
           SizedBox(
             height: 80,
             child: ListView.builder(
@@ -116,6 +185,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
+          // Divider
           Container(
             margin: EdgeInsets.symmetric(horizontal: 10),
             height: 2,
@@ -125,9 +195,12 @@ class _HomePageState extends State<HomePage> {
 
           SizedBox(height: 10),
 
+          // MAIN CONTENT (INTERNET CHECK)
           Expanded(
             child:
-                _loading
+                !hasInternet
+                    ? noInternetWidget()
+                    : _loading
                     ? Center(child: CircularProgressIndicator.adaptive())
                     : ListView.builder(
                       itemCount: newsData.length,
@@ -146,12 +219,13 @@ class _HomePageState extends State<HomePage> {
                     ),
           ),
 
+          // Pagination
           Container(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ⬅ Previous Button
+                // Previous Button
                 ElevatedButton(
                   onPressed:
                       page > 1
@@ -162,7 +236,6 @@ class _HomePageState extends State<HomePage> {
                             getTopHeadLineData();
                           }
                           : null,
-
                   style: ElevatedButton.styleFrom(
                     elevation: 5,
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -179,7 +252,7 @@ class _HomePageState extends State<HomePage> {
 
                 SizedBox(width: 20),
 
-                // ➡ Next Button
+                // Next Button
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -187,7 +260,6 @@ class _HomePageState extends State<HomePage> {
                     });
                     getTopHeadLineData();
                   },
-
                   style: ElevatedButton.styleFrom(
                     elevation: 5,
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),

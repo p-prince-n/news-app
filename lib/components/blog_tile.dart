@@ -82,7 +82,7 @@ class BlogTile extends StatelessWidget {
                       ),
                       Text(
                         author.length > 20
-                            ? "${author.substring(0, 20)}..."
+                            ? "${author.substring(0, 10)}..."
                             : author,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
